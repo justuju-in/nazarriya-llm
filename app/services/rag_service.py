@@ -6,6 +6,7 @@ import shutil
 from .document_loader import DocumentLoader
 from .vector_store import VectorStore
 from .llm_service import LLMService
+from .dataset_service import DatasetService
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class RAGService:
         self.document_loader = DocumentLoader()
         self.vector_store = VectorStore()
         self.llm_service = LLMService()
+        self.dataset_service = DatasetService()
         
         logger.info("RAG service initialized successfully")
     
@@ -86,6 +88,29 @@ class RAGService:
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """Query the RAG system"""
         try:
+            # First, check if we have a predefined dataset match
+            dataset_match = self.dataset_service.find_best_match(query, threshold=0.7)
+            
+            if dataset_match:
+                logger.info(f"Using predefined dataset response with score {dataset_match['similarity_score']:.2f}")
+                
+                # Return the predefined answer with source information
+                sources = [{
+                    "content": f"Predefined Dataset: {dataset_match['question'][:100]}...",
+                    "metadata": {
+                        "source": dataset_match.get('source', 'Dataset'),
+                        "type": "predefined_dataset",
+                        "category": dataset_match.get('category', 'general'),
+                        "similarity_score": dataset_match['similarity_score']
+                    },
+                    "relevance_score": dataset_match['similarity_score']
+                }]
+                
+                return dataset_match['answer'], sources
+            
+            # If no dataset match, fall back to document search
+            logger.info("No dataset match found, searching documents...")
+            
             # Search for relevant documents
             relevant_docs = self.vector_store.similarity_search(query, k=k)
             

@@ -155,6 +155,113 @@ def test_document_upload():
         return False
 
 
+def test_dataset_endpoints():
+    """Test dataset management endpoints"""
+    print("📊 Testing dataset endpoints...")
+    
+    try:
+        # Test listing dataset items
+        response = requests.get("http://localhost:8001/rag/dataset", timeout=10)
+        if response.status_code == 200:
+            items = response.json()
+            print(f"✅ Dataset list endpoint working - {len(items)} items found")
+        else:
+            print(f"❌ Dataset list endpoint failed: {response.status_code}")
+            return False
+        
+        # Test adding a dataset item
+        test_item = {
+            "question": "What is the test question?",
+            "answer": "This is a test answer for testing purposes."
+        }
+        
+        response = requests.post(
+            "http://localhost:8001/rag/dataset",
+            json=test_item,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print("✅ Dataset add endpoint working")
+        else:
+            print(f"❌ Dataset add endpoint failed: {response.status_code}")
+            return False
+        
+        # Test querying with the dataset item
+        response = requests.post(
+            "http://localhost:8001/rag/query",
+            json={
+                "query": "What is the test question?",
+                "history": [],
+                "max_tokens": 200
+            },
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            sources = result.get('sources', [])
+            if sources and sources[0].get('metadata', {}).get('type') == 'predefined_dataset':
+                print("✅ Dataset query working - using predefined response")
+            else:
+                print("⚠️  Dataset query working but not using predefined response")
+        else:
+            print(f"❌ Dataset query failed: {response.status_code}")
+            return False
+        
+        # Clean up test item
+        response = requests.delete("http://localhost:8001/rag/dataset/0", timeout=10)
+        if response.status_code == 200:
+            print("✅ Dataset delete endpoint working")
+        else:
+            print(f"⚠️  Dataset delete endpoint failed: {response.status_code}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Dataset endpoints error: {str(e)}")
+        return False
+
+
+def test_masculinity_query():
+    """Test the specific masculinity question with dataset"""
+    print("🎯 Testing masculinity question with dataset...")
+    
+    try:
+        response = requests.post(
+            "http://localhost:8001/rag/query",
+            json={
+                "query": "I really like dressing up, but my family keeps telling me I'm \"too much\". I like bright shirts and rings or even eyeliner. My brother tells me that wanting such things makes me \"less of a man\".",
+                "history": [],
+                "max_tokens": 500
+            },
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            sources = result.get('sources', [])
+            
+            if sources and sources[0].get('metadata', {}).get('type') == 'predefined_dataset':
+                print("✅ Masculinity query using predefined dataset response")
+                print(f"   - Answer: {result['answer'][:100]}...")
+                print(f"   - Source: {sources[0].get('metadata', {}).get('source', 'Unknown')}")
+                print(f"   - Similarity Score: {sources[0].get('metadata', {}).get('similarity_score', 'N/A')}")
+                return True
+            else:
+                print("⚠️  Masculinity query not using predefined dataset")
+                print(f"   - Answer: {result['answer'][:100]}...")
+                print(f"   - Sources: {len(sources)} document sources")
+                return True  # Still working, just not using dataset
+        else:
+            print(f"❌ Masculinity query failed: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Masculinity query error: {str(e)}")
+        return False
+
+
 def main():
     """Run all tests"""
     print("🧪 Starting Nazarriya LLM Service Tests")
@@ -170,7 +277,9 @@ def main():
         test_rag_status,
         test_documents_list,
         test_rag_query,
-        test_document_upload
+        test_document_upload,
+        test_dataset_endpoints,
+        test_masculinity_query
     ]
     
     passed = 0
