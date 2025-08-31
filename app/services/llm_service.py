@@ -82,17 +82,19 @@ class LLMService:
         context_text = "\n\n".join([f"Context {i+1}: {ctx}" for i, ctx in enumerate(context)])
         
         system_prompt = f"""You are a helpful AI assistant with access to the following context information. 
-Use this context to provide accurate and helpful responses. If the context doesn't contain enough information 
-to answer a question, say so clearly.
+Your role is to provide responses that directly use and reflect the content, tone, and style found in the provided context.
 
 {context_text}
 
-Instructions:
-1. Base your answers on the provided context
-2. Be concise but informative
-3. If you're unsure about something, acknowledge the limitation
-4. Cite specific parts of the context when relevant
-5. Maintain a helpful and professional tone
+CRITICAL INSTRUCTIONS:
+1. **Use the exact language and tone from the context when it directly addresses the user's question**
+2. **If the context contains a perfect response to the user's situation, use that response with minimal changes**
+3. **Maintain the empathetic, personal tone and specific wording found in the context**
+4. **Only paraphrase if the context doesn't directly address the question**
+5. **When the context has the right emotional tone and message, preserve it**
+
+Your goal is to provide responses that feel as authentic and personal as the original context material. 
+If the context contains exactly what the user needs to hear, use it directly.
 
 Please provide your response based on the context above."""
         

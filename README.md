@@ -159,6 +159,15 @@ docker run -p 8001:8001 -e OPENAI_API_KEY=your-key nazarriya-llm
 - `POST /rag/query` - Query the RAG system
 - `GET /rag/status` - Get system status
 
+### Dataset Management
+- `GET /rag/dataset` - List all dataset items
+- `POST /rag/dataset` - Add new dataset item
+- `PUT /rag/dataset/{index}` - Update dataset item
+- `DELETE /rag/dataset/{index}` - Delete dataset item
+- `GET /rag/dataset/category/{category}` - Get dataset by category
+- `POST /rag/dataset/ingest` - Ingest entire dataset file
+- `DELETE /rag/dataset` - Clear all dataset items
+
 ### Documentation
 - `GET /docs` - Interactive API documentation (Swagger UI)
 - `GET /redoc` - Alternative API documentation
@@ -193,6 +202,40 @@ curl -X POST "http://localhost:8001/rag/ingest" \
        "/path/to/document1.pdf",
        "/path/to/document2.html"
      ]'
+```
+
+### Dataset Management
+
+The service includes a dataset system that provides predefined responses for specific questions, with automatic fallback to document search when no match is found.
+
+#### Add Dataset Item
+```bash
+curl -X POST "http://localhost:8001/rag/dataset" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "question": "How do I deal with family criticism?",
+       "answer": "It is important to remember that your worth is not defined by others opinions."
+     }'
+```
+
+#### Ingest Dataset File
+```bash
+curl -X POST "http://localhost:8001/rag/dataset/ingest" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "file_path": "sample_dataset.json"
+     }'
+```
+
+#### Test Dataset Query
+```bash
+curl -X POST "http://localhost:8001/rag/query" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "query": "I really like dressing up, but my family keeps telling me I am too much. I like bright shirts and rings or even eyeliner. My brother tells me that wanting such things makes me less of a man.",
+       "history": [],
+       "max_tokens": 500
+     }'
 ```
 
 ## Document Processing
@@ -319,6 +362,14 @@ nazarriya-llm/
 2. Add Pydantic models in `app/models.py`
 3. Create API endpoints in `app/routers/`
 4. Update tests and documentation
+
+### Dataset Management
+
+The dataset system can be managed entirely through the API endpoints:
+
+- **Sample Dataset**: `sample_dataset.json` - Template file showing the simplified dataset format (question + answer only)
+- **API-First**: All dataset operations are available through REST endpoints
+- **Automatic Management**: Keywords, categories, and sources are auto-generated
 
 ## License
 

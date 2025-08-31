@@ -202,3 +202,112 @@ async def delete_document(filename: str):
     except Exception as e:
         logger.error(f"Error deleting document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Dataset Management Endpoints
+@router.get("/dataset")
+async def list_dataset_items():
+    """List all dataset items"""
+    try:
+        items = rag_service.dataset_service.get_all_items()
+        return items
+    except Exception as e:
+        logger.error(f"Error listing dataset items: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/dataset")
+async def add_dataset_item(request: dict):
+    """Add a new dataset item"""
+    try:
+        question = request.get("question")
+        answer = request.get("answer")
+        
+        if not question or not answer:
+            raise HTTPException(status_code=400, detail="Question and answer are required")
+        
+        # Keywords, category, and source are optional - will use defaults
+        keywords = request.get("keywords")
+        category = request.get("category")
+        source = request.get("source")
+        
+        rag_service.dataset_service.add_item(
+            question=question,
+            answer=answer,
+            keywords=keywords,
+            category=category,
+            source=source
+        )
+        
+        return {"message": "Dataset item added successfully"}
+    except Exception as e:
+        logger.error(f"Error adding dataset item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/dataset/ingest")
+async def ingest_dataset_file(request: dict):
+    """Ingest an entire dataset file"""
+    try:
+        file_path = request.get("file_path")
+        if not file_path:
+            raise HTTPException(status_code=400, detail="File path is required")
+        
+        result = rag_service.dataset_service.ingest_dataset_file(file_path)
+        return result
+    except Exception as e:
+        logger.error(f"Error ingesting dataset file: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/dataset/{index}")
+async def update_dataset_item(index: int, request: dict):
+    """Update an existing dataset item"""
+    try:
+        success = rag_service.dataset_service.update_item(index, **request)
+        if success:
+            return {"message": "Dataset item updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Dataset item at index {index} not found")
+    except Exception as e:
+        logger.error(f"Error updating dataset item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/dataset/{index}")
+async def delete_dataset_item(index: int):
+    """Delete a dataset item"""
+    try:
+        success = rag_service.dataset_service.delete_item(index)
+        if success:
+            return {"message": "Dataset item deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Dataset item at index {index} not found")
+    except Exception as e:
+        logger.error(f"Error deleting dataset item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dataset/category/{category}")
+async def get_dataset_by_category(category: str):
+    """Get dataset items by category"""
+    try:
+        items = rag_service.dataset_service.get_items_by_category(category)
+        return items
+    except Exception as e:
+        logger.error(f"Error getting dataset items by category: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/dataset")
+async def clear_dataset():
+    """Clear all dataset items"""
+    try:
+        success = rag_service.dataset_service.clear_dataset()
+        if success:
+            return {"message": "Dataset cleared successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to clear dataset")
+    except Exception as e:
+        logger.error(f"Error clearing dataset: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
