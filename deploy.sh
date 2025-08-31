@@ -43,14 +43,25 @@ APP_DIR="/opt/nazarriya-llm"
 sudo mkdir -p $APP_DIR
 sudo chown $USER:$USER $APP_DIR
 
+# Set default GitHub username
+GITHUB_USERNAME="justuju-in"
+echo "Using default GitHub username: $GITHUB_USERNAME"
+
+# Allow user to override if needed
+read -p "Press Enter to use '$GITHUB_USERNAME' or type a different username: " USER_INPUT
+if [ ! -z "$USER_INPUT" ]; then
+    GITHUB_USERNAME="$USER_INPUT"
+    echo "Using custom GitHub username: $GITHUB_USERNAME"
+fi
+
 # Clone repository (if not already present)
 if [ ! -d "$APP_DIR/.git" ]; then
     echo "📥 Cloning repository..."
-    git clone https://github.com/yourusername/nazarriya.git $APP_DIR
-    cd $APP_DIR/nazarriya-llm
+    git clone https://github.com/$GITHUB_USERNAME/nazarriya-llm.git $APP_DIR
+    cd $APP_DIR
 else
     echo "📥 Updating repository..."
-    cd $APP_DIR/nazarriya-llm
+    cd $APP_DIR
     git pull origin main
 fi
 
