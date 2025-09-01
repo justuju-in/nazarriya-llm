@@ -48,29 +48,21 @@ class LLMService:
         history: Optional[List[Dict[str, str]]] = None,
         max_tokens: Optional[int] = None
     ) -> str:
-        """Generate a response using the LLM with context"""
+        """Generate a response using the LLM with context (stateless)"""
         try:
             # Prepare system message
             system_prompt = self._create_system_prompt(context)
             
-            # Prepare conversation history
-            messages = [SystemMessage(content=system_prompt)]
-            
-            # Add conversation history if provided
-            if history:
-                for msg in history:
-                    if msg.get("role") == "user":
-                        messages.append(HumanMessage(content=msg["content"]))
-                    elif msg.get("role") == "assistant":
-                        messages.append(SystemMessage(content=msg["content"]))
-            
-            # Add current query
-            messages.append(HumanMessage(content=query))
+            # Prepare messages (stateless - no conversation history)
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=query)
+            ]
             
             # Generate response
             response = self.chat_model.invoke(messages)
             
-            logger.info(f"Generated response with {len(response.content)} characters")
+            logger.info(f"Generated stateless response with {len(response.content)} characters")
             return response.content
             
         except Exception as e:

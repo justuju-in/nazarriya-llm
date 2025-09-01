@@ -1,13 +1,13 @@
 import logging
 from typing import List
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse
-import json
 
 from ..services.rag_service import RAGService
 from ..models import (
     QueryRequest, 
     QueryResponse, 
+    PlaintextQueryRequest,
+    PlaintextQueryResponse,
     DocumentUploadResponse, 
     HealthResponse,
     DocumentInfo
@@ -32,42 +32,83 @@ async def health_check():
 
 @router.post("/query", response_model=QueryResponse)
 async def query_rag(request: QueryRequest):
-    """Query the RAG system"""
+    """Query the RAG system with encrypted data"""
     try:
-        # Convert history format if needed
-        history = []
-        if request.history:
-            for msg in request.history:
-                if "message" in msg and "role" in msg:
-                    history.append({
-                        "role": msg["role"],
-                        "content": msg["message"]
-                    })
-                elif "message" in msg:
-                    history.append({
-                        "role": "user",
-                        "content": msg["message"]
-                    })
+        import base64
+        import hashlib
         
-        # Get response from RAG service
-        answer, sources = rag_service.query(
-            query=request.query,
-            history=history,
+        # Decode base64-encoded encrypted query
+        encrypted_query_bytes = base64.b64decode(request.encrypted_query)
+        
+        # Verify content hash for integrity
+        calculated_hash = hashlib.sha256(encrypted_query_bytes).hexdigest()
+        if calculated_hash != request.content_hash:
+            raise HTTPException(status_code=400, detail="Content hash verification failed")
+        
+        # Get response from RAG service with encrypted history
+        encrypted_answer_bytes, sources = rag_service.query_encrypted(
+            encrypted_query=encrypted_query_bytes,
+            encryption_metadata=request.encryption_metadata,
+            encrypted_history=request.encrypted_history,
             max_tokens=request.max_tokens
         )
         
+        # Calculate hash for the encrypted answer
+        answer_hash = hashlib.sha256(encrypted_answer_bytes).hexdigest()
+        
+        # Encode answer as base64 for JSON response
+        encrypted_answer_b64 = base64.b64encode(encrypted_answer_bytes).decode('utf-8')
+        
         return QueryResponse(
+            encrypted_answer=encrypted_answer_b64,
+            encryption_metadata=request.encryption_metadata,  # Pass through same metadata
+            content_hash=answer_hash,
+            sources=sources,
+            metadata={
+                "query_length": len(encrypted_query_bytes),
+                "sources_count": len(sources),
+                "model": settings.openai_model,
+                "stateless": True
+            }
+        )
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is (like the hash verification error)
+        raise
+    except Exception as e:
+        import traceback
+        error_msg = str(e) if str(e) else f"Unknown error: {type(e).__name__}"
+        logger.error(f"Error in encrypted RAG query: {error_msg}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.post("/query-plaintext", response_model=PlaintextQueryResponse)
+async def query_rag_plaintext(request: PlaintextQueryRequest):
+    """Query the RAG system with plaintext data (for client-side decryption approach)"""
+    try:
+        logger.info(f"Processing plaintext query: {request.query[:100]}...")
+        
+        # Use the existing query method for full RAG functionality
+        answer, sources = rag_service.query(
+            query=request.query,
+            history=request.history,
+            max_tokens=request.max_tokens
+        )
+        
+        return PlaintextQueryResponse(
             answer=answer,
             sources=sources,
             metadata={
                 "query_length": len(request.query),
                 "sources_count": len(sources),
-                "model": settings.openai_model
+                "model": settings.openai_model,
+                "conversation_length": len(request.history) if request.history else 0
             }
         )
         
     except Exception as e:
-        logger.error(f"Error in RAG query: {str(e)}")
+        logger.error(f"Error in plaintext RAG query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

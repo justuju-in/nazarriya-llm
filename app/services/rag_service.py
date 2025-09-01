@@ -79,6 +79,44 @@ class RAGService:
             logger.error(f"Error ingesting documents: {str(e)}")
             raise
     
+    def query_encrypted(
+        self, 
+        encrypted_query: bytes, 
+        encryption_metadata: dict,
+        encrypted_history: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: Optional[int] = None,
+        k: int = 4
+    ) -> Tuple[bytes, List[Dict[str, Any]]]:
+        """Query the RAG system with encrypted data and history"""
+        try:
+            # For encrypted queries, we need to work with the encrypted data directly
+            # Since we can't decrypt the query or history, we'll use a placeholder approach
+            # In a real implementation, this would need to be handled differently
+            
+            # Log that we received encrypted history for context
+            if encrypted_history:
+                logger.info(f"Received {len(encrypted_history)} encrypted history messages for context")
+                # In a real implementation, we could use the encrypted history
+                # to maintain conversation context without decrypting the content
+            
+            # For now, we'll return a placeholder encrypted response
+            # This indicates that the LLM service needs to be updated to handle
+            # encrypted queries properly (which would require client-side decryption
+            # or a different architecture)
+            
+            placeholder_response = "Encrypted RAG processing with conversation history is being implemented. The LLM service needs to be updated to handle encrypted queries and history properly."
+            encrypted_response = placeholder_response.encode('utf-8')
+            
+            # Return empty sources for now
+            sources = []
+            
+            logger.info("Processed encrypted query with history (placeholder implementation)")
+            return encrypted_response, sources
+            
+        except Exception as e:
+            logger.error(f"Error processing encrypted query with history: {str(e)}")
+            raise
+
     def query(
         self, 
         query: str, 
@@ -86,7 +124,7 @@ class RAGService:
         max_tokens: Optional[int] = None,
         k: int = 4
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Query the RAG system"""
+        """Query the RAG system (deprecated - use query_encrypted instead)"""
         try:
             # First, check if we have a predefined dataset match
             dataset_match = self.dataset_service.find_best_match(query, threshold=0.7)
@@ -120,11 +158,11 @@ class RAGService:
             # Extract context from relevant documents
             context = [doc.page_content for doc in relevant_docs]
             
-            # Generate response using LLM
+            # Generate response using LLM (stateless - no history)
             response = self.llm_service.generate_response(
                 query=query,
                 context=context,
-                history=history,
+                history=None,  # Remove history dependency
                 max_tokens=max_tokens
             )
             
