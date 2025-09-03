@@ -1,14 +1,62 @@
 # Nazarriya LLM Service
 
-A RAG-powered LLM service using OpenAI and Langchain, designed to work with the Nazarriya application.
+  * [Features](#features)
+  * [Architecture](#architecture)
+    + [Security Flow](#security-flow)
+  * [Prerequisites](#prerequisites)
+  * [Environment Variables](#environment-variables)
+  * [Installation](#installation)
+    + [Local Development](#local-development)
+      - [Option A: Using the ingest script](#option-a--using-the-ingest-script)
+      - [Option B: Using the API directly](#option-b--using-the-api-directly)
+    + [Docker Deployment](#docker-deployment)
+  * [API Endpoints](#api-endpoints)
+    + [Health Check](#health-check)
+    + [Document Management](#document-management)
+    + [Encrypted RAG Operations](#encrypted-rag-operations)
+    + [Dataset Management](#dataset-management)
+    + [Documentation](#documentation)
+  * [Usage Examples](#usage-examples)
+    + [Query the Encrypted RAG System](#query-the-encrypted-rag-system)
+    + [Upload a Document](#upload-a-document)
+    + [Ingest Documents from Paths](#ingest-documents-from-paths)
+    + [Dataset Management](#dataset-management-1)
+      - [Add Dataset Item](#add-dataset-item)
+      - [Ingest Dataset File](#ingest-dataset-file)
+      - [Test Dataset Query (Encrypted)](#test-dataset-query--encrypted-)
+  * [Document Processing](#document-processing)
+    + [Supported Formats](#supported-formats)
+    + [Secure Processing Pipeline](#secure-processing-pipeline)
+  * [Configuration](#configuration)
+    + [Required Configuration](#required-configuration)
+    + [Optional Configuration](#optional-configuration)
+    + [Security Configuration](#security-configuration)
+  * [Deployment](#deployment)
+    + [Hetzner Deployment](#hetzner-deployment)
+    + [Production Considerations](#production-considerations)
+  * [Monitoring and Logging](#monitoring-and-logging)
+  * [Troubleshooting](#troubleshooting)
+    + [Common Issues](#common-issues)
+    + [Logs](#logs)
+  * [Development](#development)
+    + [Project Structure](#project-structure)
+    + [Adding New Features](#adding-new-features)
+    + [Dataset Management](#dataset-management-2)
+  * [License](#license)
+  * [Support](#support)
+
+
+A secure, RAG-powered LLM service using OpenAI and Langchain, designed to work with the Nazarriya application. This service provides end-to-end encrypted communication for maximum privacy and security.
 
 ## Features
 
+- **End-to-End Encryption**: All queries and responses are encrypted using AES-GCM
 - **Document Processing**: Support for PDF and HTML documents
 - **Vector Storage**: ChromaDB-based vector database for efficient retrieval
 - **RAG Pipeline**: Retrieval-Augmented Generation using OpenAI models
-- **RESTful API**: FastAPI-based service with comprehensive endpoints
+- **Secure API**: FastAPI-based service with encrypted endpoints
 - **Containerized**: Docker support for easy deployment
+- **Content Integrity**: SHA-256 hashing for message integrity verification
 
 ## Architecture
 
@@ -16,14 +64,24 @@ A RAG-powered LLM service using OpenAI and Langchain, designed to work with the 
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Main API      │───▶│   LLM Service    │───▶│   OpenAI API    │
 │ (nazarriya-api) │    │ (nazarriya-llm) │    │                 │
+│ [Encrypted]     │    │ [Decrypt/Encrypt]│    │ [Plaintext]     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
                                 ▼
                        ┌──────────────────┐
                        │   Vector Store   │
                        │   (ChromaDB)     │
+                       │ [Encrypted Data] │
                        └──────────────────┘
 ```
+
+### Security Flow
+1. **Encrypted Query**: Client sends AES-GCM encrypted query with metadata
+2. **Decryption**: LLM service decrypts query for processing
+3. **RAG Processing**: Query processed against encrypted vector store
+4. **LLM Generation**: Decrypted query sent to OpenAI for response generation
+5. **Encryption**: Response encrypted with same metadata before sending back
+6. **Integrity Check**: SHA-256 hashes verify message integrity throughout
 
 ## Prerequisites
 
@@ -97,16 +155,21 @@ curl -X POST "http://localhost:8001/rag/ingest" \
      ]'
 ```
 
-6. Test the RAG System
+6. Test the Encrypted RAG System
 
 ```bash
-# Test a simple query
+# Test an encrypted query (requires client-side encryption)
 curl -X POST "http://localhost:8001/rag/query" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "What are the main topics covered in your documents?",
-       "query": "What are the main topics covered in your documents?",
-       "history": [],
+       "encrypted_query": "base64_encoded_encrypted_query",
+       "encryption_metadata": {
+         "algorithm": "AES-GCM",
+         "key_id": "user_key_id",
+         "nonce": "base64_encoded_nonce"
+       },
+       "content_hash": "sha256_hash_of_encrypted_query",
+       "encrypted_history": [],
        "max_tokens": 500
      }'
 ```
@@ -155,8 +218,8 @@ docker run -p 8001:8001 -e OPENAI_API_KEY=your-key nazarriya-llm
 - `DELETE /rag/documents/{filename}` - Delete a document
 - `POST /rag/reset` - Reset the entire system
 
-### RAG Operations
-- `POST /rag/query` - Query the RAG system
+### Encrypted RAG Operations
+- `POST /rag/query` - Query the RAG system with encrypted data
 - `GET /rag/status` - Get system status
 
 ### Dataset Management
@@ -174,16 +237,50 @@ docker run -p 8001:8001 -e OPENAI_API_KEY=your-key nazarriya-llm
 
 ## Usage Examples
 
-### Query the RAG System
+### Query the Encrypted RAG System
+
+**Note**: All queries must be encrypted client-side before sending to the API.
 
 ```bash
 curl -X POST "http://localhost:8001/rag/query" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "What is the main topic of the documents?",
-       "history": [],
+       "encrypted_query": "base64_encoded_encrypted_query",
+       "encryption_metadata": {
+         "algorithm": "AES-GCM",
+         "key_id": "user_key_id",
+         "nonce": "base64_encoded_nonce"
+       },
+       "content_hash": "sha256_hash_of_encrypted_query",
+       "encrypted_history": [],
        "max_tokens": 500
      }'
+```
+
+**Response:**
+```json
+{
+  "encrypted_answer": "base64_encoded_encrypted_response",
+  "encryption_metadata": {
+    "algorithm": "AES-GCM",
+    "key_id": "user_key_id",
+    "nonce": "base64_encoded_nonce"
+  },
+  "content_hash": "sha256_hash_of_encrypted_response",
+  "sources": [
+    {
+      "metadata": {
+        "source": "document1.pdf"
+      }
+    }
+  ],
+  "metadata": {
+    "query_length": 256,
+    "sources_count": 1,
+    "model": "gpt-3.5-turbo",
+    "stateless": true
+  }
+}
 ```
 
 ### Upload a Document
@@ -227,13 +324,19 @@ curl -X POST "http://localhost:8001/rag/dataset/ingest" \
      }'
 ```
 
-#### Test Dataset Query
+#### Test Dataset Query (Encrypted)
 ```bash
 curl -X POST "http://localhost:8001/rag/query" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "I really like dressing up, but my family keeps telling me I am too much. I like bright shirts and rings or even eyeliner. My brother tells me that wanting such things makes me less of a man.",
-       "history": [],
+       "encrypted_query": "base64_encoded_encrypted_query_about_family_criticism",
+       "encryption_metadata": {
+         "algorithm": "AES-GCM",
+         "key_id": "user_key_id",
+         "nonce": "base64_encoded_nonce"
+       },
+       "content_hash": "sha256_hash_of_encrypted_query",
+       "encrypted_history": [],
        "max_tokens": 500
      }'
 ```
@@ -244,18 +347,22 @@ curl -X POST "http://localhost:8001/rag/query" \
 - **PDF**: Uses PyPDF2 for text extraction
 - **HTML**: Uses BeautifulSoup for parsing
 
-### Processing Pipeline
+### Secure Processing Pipeline
 1. Document loading and text extraction
 2. Text chunking with configurable size and overlap
 3. Embedding generation using OpenAI
-4. Vector storage in ChromaDB
-5. Retrieval and response generation
+4. Encrypted vector storage in ChromaDB
+5. Encrypted retrieval and response generation
+6. End-to-end encryption for all client communications
 
 ## Configuration
 
 The service can be configured through environment variables or by modifying `app/config.py`:
 
+### Required Configuration
 - `OPENAI_API_KEY`: Required OpenAI API key
+
+### Optional Configuration
 - `OPENAI_MODEL`: LLM model (default: gpt-3.5-turbo)
 - `OPENAI_EMBEDDING_MODEL`: Embedding model (default: text-embedding-ada-002)
 - `CHUNK_SIZE`: Text chunk size (default: 1000)
@@ -263,6 +370,12 @@ The service can be configured through environment variables or by modifying `app
 - `MAX_TOKENS`: Maximum response tokens (default: 1000)
 - `HOST`: Server host (default: 0.0.0.0)
 - `PORT`: Server port (default: 8001)
+
+### Security Configuration
+- All client communications are encrypted using AES-GCM
+- Content integrity verified using SHA-256 hashing
+- No plaintext data stored or transmitted to clients
+- Encryption metadata managed client-side
 
 ## Deployment
 
@@ -305,19 +418,22 @@ sudo ufw enable
 ### Production Considerations
 
 - Use environment-specific configuration files
-- Implement proper logging and monitoring
-- Set up SSL/TLS certificates
-- Configure reverse proxy (nginx)
-- Implement rate limiting
-- Set up backup strategies for vector database
+- Implement proper logging and monitoring (with encrypted data sanitization)
+- Set up SSL/TLS certificates for secure communication
+- Configure reverse proxy (nginx) with proper security headers
+- Implement rate limiting and DDoS protection
+- Set up backup strategies for encrypted vector database
+- Ensure all client communications use end-to-end encryption
+- Regular security audits and dependency updates
 
 ## Monitoring and Logging
 
 The service provides:
 - Health check endpoints
-- Structured logging
-- Error handling and reporting
+- Structured logging with encrypted data sanitization
+- Error handling and reporting (no sensitive data exposure)
 - Performance metrics
+- Security event logging
 
 ## Troubleshooting
 
@@ -327,6 +443,8 @@ The service provides:
 2. **Port Already in Use**: Change the port in configuration or stop conflicting services
 3. **Memory Issues**: Reduce chunk size or use smaller models
 4. **Vector Store Errors**: Check disk space and permissions
+5. **Encryption Errors**: Verify client-side encryption implementation
+6. **Content Hash Mismatch**: Ensure proper SHA-256 hashing on client side
 
 ### Logs
 
@@ -370,6 +488,7 @@ The dataset system can be managed entirely through the API endpoints:
 - **Sample Dataset**: `sample_dataset.json` - Template file showing the simplified dataset format (question + answer only)
 - **API-First**: All dataset operations are available through REST endpoints
 - **Automatic Management**: Keywords, categories, and sources are auto-generated
+- **Secure Integration**: Dataset queries are processed through the encrypted RAG pipeline
 
 ## License
 
