@@ -7,8 +7,6 @@
   * [Environment Variables](#environment-variables)
   * [Installation](#installation)
     + [Local Development](#local-development)
-      - [Option A: Using the ingest script](#option-a--using-the-ingest-script)
-      - [Option B: Using the API directly](#option-b--using-the-api-directly)
     + [Docker Deployment](#docker-deployment)
   * [API Endpoints](#api-endpoints)
     + [Health Check](#health-check)
