@@ -86,7 +86,7 @@ def test_rag_query():
     print("❓ Testing RAG query endpoint...")
     try:
         response = requests.post(
-            "http://localhost:8001/rag/query",
+            "http://localhost:8001/rag/query-plaintext",
             json={
                 "query": "What is this service about?",
                 "history": [],
@@ -189,7 +189,7 @@ def test_dataset_endpoints():
         
         # Test querying with the dataset item
         response = requests.post(
-            "http://localhost:8001/rag/query",
+            "http://localhost:8001/rag/query-plaintext",
             json={
                 "query": "What is the test question?",
                 "history": [],
@@ -229,7 +229,7 @@ def test_masculinity_query():
     
     try:
         response = requests.post(
-            "http://localhost:8001/rag/query",
+            "http://localhost:8001/rag/query-plaintext",
             json={
                 "query": "I really like dressing up, but my family keeps telling me I'm \"too much\". I like bright shirts and rings or even eyeliner. My brother tells me that wanting such things makes me \"less of a man\".",
                 "history": [],
